@@ -1,12 +1,50 @@
 # src/classifier.py
 
+"""
+Classifier Module
+=================
+
+This module provides functions to classify documents based on their textual content.
+It extracts text from various file types and uses pattern matching to determine the type of document.
+The classifier does not rely on filenames, making it effective even for poorly named files.
+"""
+
 import re
 import logging
-# A slightly more diverse code that allows for deeper classification
+from werkzeug.datastructures import FileStorage
+from .extractors import (
+    extract_text_from_pdf,
+    extract_text_from_image,
+    extract_text_from_docx,
+    # extract_text_from_excel,  # Uncomment if handling Excel files
+)
+
 def classify_text(text: str) -> str:
+    """
+    Classify the text content of a document by matching it against predefined regular expression patterns
+    for various document types. It calculates scores based on the number of pattern matches for each type
+    and selects the one with the highest score.
+
+    Parameters:
+        text (str): The extracted text from the document.
+
+    Returns:
+        str: The classification of the document. Possible values include:
+            - 'drivers_license'
+            - 'passport'
+            - 'bank_statement'
+            - 'invoice'
+            - 'tax_report'
+            - 'resume'
+            - 'contract'
+            - 'medical_report'
+            - 'unknown' (if no patterns match)
+            - 'ambiguous' (if there's a tie between multiple types)
+    """
+    # Normalize text to lowercase
     text = text.lower()
 
-    # Updated patterns without word boundaries
+    # Define regular expression patterns for each document type
     patterns = {
         'drivers_license': [
             r'driver\'?s?\s+license',
@@ -59,10 +97,10 @@ def classify_text(text: str) -> str:
         ],
     }
 
-    # Initialize scores
+    # Initialize scores for each document type
     scores = {key: 0 for key in patterns.keys()}
 
-    # Compute scores
+    # Compute scores based on pattern matches
     for doc_type, doc_patterns in patterns.items():
         for pattern in doc_patterns:
             matches = re.findall(pattern, text)
@@ -73,36 +111,27 @@ def classify_text(text: str) -> str:
     if max_score == 0:
         return 'unknown'
 
-    # Check for ties
+    # Check for ties among document types with the highest score
     top_classes = [doc_type for doc_type, score in scores.items() if score == max_score]
     if len(top_classes) == 1:
         return top_classes[0]
     else:
         return 'ambiguous'
 
-
-# src/classifier.py
-
-from werkzeug.datastructures import FileStorage
-from .extractors import (
-    extract_text_from_pdf,
-    extract_text_from_image,
-    extract_text_from_docx,
-    # extract_text_from_excel,  # Uncomment if handling Excel files
-)
-import logging
-
 def classify_text2(text: str) -> str:
     """
-    Classify the text content of a document.
+    An alternative, simplified function for classifying text content based on direct keyword searches.
 
-    Args:
+    Parameters:
         text (str): The extracted text from the document.
 
     Returns:
         str: The classification of the document.
     """
+    # Normalize text to lowercase
     text = text.lower()
+
+    # Direct keyword matching
     if 'driver\'s license' in text or 'driver license' in text:
         return 'drivers_license'
     elif 'bank statement' in text:
@@ -124,7 +153,7 @@ def classify_file(file: FileStorage) -> str:
     """
     Classify a file based on its content by extracting text and analyzing it.
 
-    Args:
+    Parameters:
         file (FileStorage): The file uploaded by the user.
 
     Returns:
@@ -155,6 +184,3 @@ def classify_file(file: FileStorage) -> str:
         # Log the error for debugging purposes
         logging.error(f"Error processing file {filename}: {e}")
         return 'error processing file'
-
-
-
